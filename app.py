@@ -213,15 +213,30 @@ def main():
     api_key = get_secret("GEMINI_API_KEY")
     model = get_secret("GEMINI_MODEL", DEFAULT_MODEL)
 
+    # API key: taken from secrets/env if set, otherwise asked on the main page
+    if api_key:
+        st.success("Gemini API key loaded from secrets / environment.")
+    else:
+        st.info(
+            "Step 1: paste your Gemini API key below. "
+            "Don't have one? [Get a free key here](https://aistudio.google.com/apikey)."
+        )
+        api_key = st.text_input(
+            "Gemini API key",
+            type="password",
+            placeholder="AIza...",
+            key="api_key_input",
+            help="Press Enter after pasting. The key is only used for this session.",
+        )
+    api_key = str(api_key).strip().strip("\"'")
+    if api_key and len(api_key) < 20:
+        st.warning("That key looks too short. Copy the full key from Google AI Studio.")
+
     with st.sidebar:
         st.header("Settings")
-        if not api_key:
-            api_key = st.text_input("Gemini API key", type="password")
-            st.caption("Get a free key at aistudio.google.com/apikey")
-        else:
-            st.success("API key loaded")
         model = st.text_input("Model", value=model)
 
+    st.write("Step 2: upload your resume (and optionally paste a job description).")
     col1, col2 = st.columns(2)
     with col1:
         uploaded = st.file_uploader("Upload resume", type=["pdf", "docx", "txt"])
@@ -230,10 +245,10 @@ def main():
             "Job description (optional, improves keyword matching)", height=150
         )
 
-    if not st.button("Analyze resume", type="primary", disabled=uploaded is None):
-        return
+    ready = uploaded is not None and bool(api_key)
     if not api_key:
-        st.error("Please provide a Gemini API key in the sidebar.")
+        st.caption("The Analyze button unlocks once an API key is entered.")
+    if not st.button("Analyze resume", type="primary", disabled=not ready):
         return
 
     try:
